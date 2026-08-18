@@ -1,0 +1,28 @@
+# Core Django & REST Framework
+Django>=5.0,<5.2
+djangorestframework>=3.15.0
+django-cors-headers>=4.3.1
+
+# Database Driver
+mysqlclient>=2.2.4
+mariadb>=1.1.10
+
+# Celery & Background Tasks
+celery>=5.4.0
+redis>=5.0.4
+django-celery-results>=2.5.1
+
+# Environment & Config
+python-dotenv>=1.0.1
+
+# Data Processing & Utilities
+pandas>=2.2.0
+openpyxl>=3.1.2
+Pillow>=10.3.0
+requests>=2.31.0
+rapidfuzz>=3.8.1
+
+# ML / Embeddings / Classification Engine
+torch>=2.2.0
+sentence-transformers>=2.7.0
+open-clip-torch>=2.24.0
