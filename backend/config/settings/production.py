@@ -10,23 +10,20 @@ from .base import *  # noqa: F401, F403
 # BASE_DIR is defined in base.py, re-declared for IDE typing and linters
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Load environment variables from backend/.env or root .env
-_env_file = BASE_DIR / '.env'
-if not _env_file.exists():
-    _env_file = BASE_DIR.parent / '.env'
+def _load_env():
+    """Load environment variables from .env file using standard library."""
+    for env_path in [BASE_DIR / '.env', BASE_DIR.parent / '.env']:
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+            break
 
-try:
-    from dotenv import load_dotenv
-    if _env_file.exists():
-        load_dotenv(_env_file)
-except ImportError:
-    if _env_file.exists():
-        with open(_env_file, 'r', encoding='utf-8') as _f:
-            for _line in _f:
-                _line = _line.strip()
-                if _line and not _line.startswith('#') and '=' in _line:
-                    _k, _v = _line.split('=', 1)
-                    os.environ[_k.strip()] = _v.strip()
+
+_load_env()
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'change-this-secret-key-in-production')
 DEBUG = False
