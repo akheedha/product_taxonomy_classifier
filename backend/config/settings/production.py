@@ -3,13 +3,17 @@ Production settings for product_taxonomy_classifier project.
 Strict security and production database/caching requirements.
 """
 
+from pathlib import Path
 import os
 from .base import *  # noqa: F401, F403
 
+# BASE_DIR is defined in base.py, re-declared for IDE typing and linters
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 # Load environment variables from backend/.env or root .env
-_env_file = BASE_DIR / '.env'  # noqa: F405
+_env_file = BASE_DIR / '.env'
 if not _env_file.exists():
-    _env_file = BASE_DIR.parent / '.env'  # noqa: F405
+    _env_file = BASE_DIR.parent / '.env'
 
 try:
     from dotenv import load_dotenv
