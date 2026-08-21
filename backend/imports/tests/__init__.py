@@ -1,0 +1,1 @@
+"""Catalog imports test suite."""

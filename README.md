@@ -1,274 +1,297 @@
-# Product Taxonomy Classifier & Curator Platform
+# Shopify Product Taxonomy Classifier & Curator Platform
 
-A Django 5 machine-learning powered service designed to classify e-commerce product catalogs into standardized taxonomy (such as Shopify category trees & attributes) and execute classification jobs asynchronously using Celery and Redis.
+[![CI Pipeline](https://github.com/organization/product_taxonomy_classifier/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/Django-5.0-green.svg)](https://www.djangoproject.com/)
+[![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.0-646cff.svg)](https://vitejs.dev/)
+[![MariaDB](https://img.shields.io/badge/MariaDB-11.4-brown.svg)](https://mariadb.org/)
+[![Redis](https://img.shields.io/badge/Redis-7.0-red.svg)](https://redis.io/)
 
-> 📖 **Candidate Answers & Architecture Whitepaper**: Detailed answers to Questions 1 through 14 from the technical assessment are provided in [ANSWERS.md](file:///d:/assignment/product_taxonomy_classifier/ANSWERS.md).
+An enterprise-grade, multi-modal automated product categorization and human curation platform. Ingests raw supplier catalog spreadsheets, aggregates multi-image arrays and attributes, automatically maps products to the official **Shopify Product Taxonomy (14,606 hierarchical categories)** using **Sentence-Transformers** and **OpenCLIP**, extracts category-specific attributes using **RapidFuzz**, and provides a full-featured curation workspace for catalog operations.
 
----
-
-## 📁 Architecture & Apps
-
-The project is structured into modular domain apps:
-
-- **`catalog`**: Product data models, raw catalog storage, and batch product import handlers (CSV/XLSX/JSON).
-- **`taxonomy`**: Shopify taxonomy schemas, hierarchical category trees, attributes, and allowed attribute values.
-- **`classification`**: Classification execution engine (sentence embeddings, multi-modal CLIP, string matching), async job coordinator, and classification result logging.
-- **`taxonomy_classifier`**: Project root configuration, split settings (`base`, `dev`, `prod`), Celery setup, root routing, and health checks.
-- **`frontend`**: Modern React + Vite curator dashboard for reviewing, filtering, approving, and manually overriding classifications.
-
+> [!IMPORTANT]
+> 📖 **Technical Architecture & Design Questions:** The complete answers to all 14 technical design and architectural questions are available directly in [**QUESTIONS.md**](QUESTIONS.md).
 
 ---
 
-## 🛠️ Tech Stack & Dependencies
-
-- **Framework**: Django 5.x, Django REST Framework
-- **Database**: MariaDB 11.x (via `mysqlclient` / `mariadb`)
-- **Queue / Broker**: Celery 5.x, Redis 7.x, `django-celery-results`
-- **Machine Learning & NLP**: PyTorch, `sentence-transformers`, `open-clip-torch`, `rapidfuzz`
-- **Data & Media**: `pandas`, `openpyxl`, `Pillow`, `requests`
-- **Configuration**: `python-dotenv`
+## 📑 Table of Contents
+1. [Technical Architecture Q&A (QUESTIONS.md)](#-technical-architecture-qa)
+2. [Project Overview](#1-project-overview)
+3. [Key Features](#2-key-features)
+4. [Architecture & Domain Boundaries](#3-architecture--domain-boundaries)
+5. [Technology Stack](#4-technology-stack)
+6. [Directory Structure](#5-directory-structure)
+7. [Setup Instructions](#6-setup-instructions)
+8. [Environment Variables](#7-environment-variables)
+9. [Database Setup](#8-database-setup)
+10. [Running the Backend](#9-running-the-backend)
+11. [Running the Frontend](#10-running-the-frontend)
+12. [Running Celery & Redis](#11-running-celery--redis)
+13. [Excel / CSV Upload Format](#12-excel--csv-upload-format)
+14. [Multi-Modal Classification Pipeline](#13-multi-modal-classification-pipeline)
+15. [Confidence Scoring & Review Triggers](#14-confidence-scoring--review-triggers)
+16. [Batch Processing & Scalability](#15-batch-processing--scalability)
+17. [Failure Recovery & Resumability](#16-failure-recovery--resumability)
+18. [REST API Endpoints](#17-rest-api-endpoints)
+19. [Testing & Quality Assurance](#18-testing--quality-assurance)
+20. [Documentation Index](#19-documentation-index)
 
 ---
 
-## 🚀 Getting Started (Local Development)
+## 📖 Technical Architecture Q&A
 
-### 1. Prerequisites
+For complete, technically grounded answers to the 14 core system design questions, see [**QUESTIONS.md**](QUESTIONS.md):
 
-- Python 3.10+ (tested on Python 3.13)
-- Docker & Docker Compose (for MariaDB & Redis)
-- C/C++ build tools / MySQL development libraries (if compiling `mysqlclient` on Windows/Linux)
+- **Q1:** Automatic Shopify Category, Attributes & Attribute Values Identification
+- **Q2:** Handling Products With Title but No Description or Image
+- **Q3:** Using Product Images for Visual Categorization (`OpenCLIP ViT-B-32`)
+- **Q4:** Large-Scale Processing of 10,000+ Products (Celery & Redis)
+- **Q5:** Shopify Taxonomy Database Structure & Hierarchy (MariaDB)
+- **Q6:** Determining Classification Confidence Score & Calibrated Thresholds
+- **Q7:** Handling Uncertain or Multiple Category Results & Curator Overrides
+- **Q8:** Broken or Inaccessible Image Handling & Fault Isolation
+- **Q9:** API and Database Architecture (DRF & Relational ERD)
+- **Q10:** Optimizing 10,000 AI/API Requests (Latency Analysis & Concurrency)
+- **Q11:** Failure Recovery & Resumption After 6,000 Products
+- **Q12:** Technology & Framework Choices (Django, MariaDB, React, PyTorch)
+- **Q13:** High-Level System Architecture & Context Diagram
+- **Q14:** Production Development Effort Estimation (288 Hours, 16 Tasks WBS)
+- **PROD:** Current Prototype vs Production Architecture Comparison
 
 ---
 
-### 2. Clone and Setup Virtual Environment
+## 1. Project Overview
+E-commerce merchants frequently receive raw vendor catalogs with inconsistent categorizations, missing descriptions, or unstandardized attributes. This platform automates the transformation of unstructured catalog data into canonical Shopify Taxonomy standards while flagging ambiguous or low-confidence predictions for human curation.
 
-```bash
-# Navigate to the workspace
-cd /path/to/product_taxonomy_classifier
+---
 
-# Create virtual environment
-python -m venv venv
+## 2. Key Features
+- **Multi-Modal AI Pipeline:** Combines dense semantic text embeddings (`all-MiniLM-L6-v2`) with zero-shot visual similarity (`OpenCLIP ViT-B-32`).
+- **Resilient Spreadsheet Ingestion:** Parses `.xlsx`, `.xls`, and `.csv` files, aggregating up to 20 images per product and generating data quality reports.
+- **Shopify Taxonomy Explorer:** Fast search across 14,606 category hierarchy nodes and mapped allowed attribute schemas.
+- **Curator Review Workspace:** Distraction-free review table with URL parameter synchronization (`?job=`, `?needs_review=`, `?min_conf=`), expandable metadata drawers, 1-click approvals, and alternative category overrides.
+- **Fault-Tolerant Batch Processing:** Background Celery workers with 100-item chunking, per-item fault isolation, and resumable execution state.
 
-# Activate virtual environment
-# On Windows (PowerShell):
-.\venv\Scripts\Activate.ps1
-# On Windows (CMD):
-.\venv\Scripts\activate.bat
-# On Linux / macOS:
-source venv/bin/activate
+---
+
+## 3. Architecture & Domain Boundaries
+The backend is structured into clean modular domain applications:
+
+```text
+backend/
+├── config/          # Core Django settings, URLs, Celery, and WSGI/ASGI gateways
+├── products/        # Product catalog models, persistence, and CRUD services
+├── imports/         # Excel/CSV parser, row validators, and upload API
+├── taxonomy/        # Shopify category hierarchy, attributes, and search services
+├── classification/  # Multi-modal ML engine (text, image, fusion) & confidence logic
+├── processing/      # Background Celery tasks, batch processor, retry & resumption
+└── common/          # Shared constants, custom exceptions, and health checks
+```
+
+For complete architectural diagrams and design rationales, see [docs/architecture.md](docs/architecture.md) and [docs/technical-design.md](docs/technical-design.md).
+
+---
+
+## 4. Technology Stack
+- **Backend:** Python 3.12+, Django 5, Django REST Framework, Celery, Pandas, PyTorch, OpenCLIP, Sentence-Transformers, RapidFuzz.
+- **Database & Cache:** MariaDB 11.4+ (`utf8mb4`), Redis 7.
+- **Frontend:** React 18, Vite 5, React Router v6, custom accessible CSS design system with Dark/Light modes.
+
+---
+
+## 5. Directory Structure
+```text
+product_taxonomy_classifier/
+├── QUESTIONS.md             # Master technical design questions & answers
+├── README.md                # Project documentation & quickstart guide
+├── docker-compose.yml       # Local MariaDB & Redis services
+├── .env.example             # Environment configuration template
+├── .gitignore
+├── backend/
+│   ├── config/              # Django settings (base, development, production), celery, urls
+│   ├── products/            # Product models, serializers, views, services, tests
+│   ├── imports/             # Excel parser, validators, services, views, tests
+│   ├── taxonomy/            # Category & Attribute models, import command, tests
+│   ├── classification/      # ML engine (fusion, text, image, attributes), confidence
+│   ├── processing/          # Celery tasks, batch processor, retry policies, tests
+│   ├── common/              # Constants, exceptions, health check view
+│   ├── scripts/             # Standalone review analysis and diagnostic scripts
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # common/, results/, imports/, taxonomy/
+│   │   ├── pages/           # DashboardPage, ReviewPage, ImportPage, TaxonomyPage
+│   │   ├── services/        # api.js, products.js, imports.js, classification.js, taxonomy.js
+│   │   ├── hooks/           # usePolling.js
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
+├── docs/                    # technical-design.md, architecture.md, api.md, etc.
+└── .github/workflows/       # ci.yml GitHub Actions pipeline
 ```
 
 ---
 
-### 3. Install Dependencies
+## 6. Setup Instructions
 
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
+### Prerequisites
+- Python 3.12+
+- Node.js 20+ & npm
+- MariaDB 11.4+ (or Docker)
+- Redis 7+ (or Docker)
+
+---
+
+## 7. Environment Variables
+Create `backend/.env` based on `backend/.env.example`:
+
+```ini
+DEBUG=True
+SECRET_KEY=development-secret-key-change-in-production
+ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,testserver
+
+DB_ENGINE=django.db.backends.mysql
+DB_NAME=taxonomy_classifier
+DB_USER=root
+DB_PASSWORD=rootpassword
+DB_HOST=127.0.0.1
+DB_PORT=3306
+
+REDIS_URL=redis://127.0.0.1:6379/0
+CELERY_BROKER_URL=redis://127.0.0.1:6379/0
 ```
 
 ---
 
-### 4. Configure Environment Variables
-
-Copy the sample environment file to `.env`:
-
-```bash
-# Windows PowerShell
-Copy-Item .env.example .env
-
-# Linux / macOS
-cp .env.example .env
-```
-
-Review and update `.env` if your local ports or passwords differ:
-
-| Variable | Default Value | Description |
-|---|---|---|
-| `DJANGO_SETTINGS_MODULE` | `taxonomy_classifier.settings.dev` | Active Django settings module |
-| `SECRET_KEY` | `...` | Django cryptographic signing key |
-| `DEBUG` | `True` | Enable debug mode |
-| `ALLOWED_HOSTS` | `localhost,127.0.0.1,0.0.0.0` | Allowed HTTP host headers |
-| `DB_ENGINE` | `django.db.backends.mysql` | Django database backend |
-| `DB_NAME` | `taxonomy_classifier` | MariaDB database name |
-| `DB_USER` | `root` | MariaDB username |
-| `DB_PASSWORD` | `rootpassword` | MariaDB password |
-| `DB_HOST` | `127.0.0.1` | MariaDB host address |
-| `DB_PORT` | `3306` | MariaDB port |
-| `REDIS_URL` | `redis://127.0.0.1:6379/0` | Redis instance URL |
-| `CELERY_BROKER_URL` | `redis://127.0.0.1:6379/0` | Celery broker URL |
-| `CELERY_RESULT_BACKEND` | `django-db` | Store task results in database |
-
----
-
-### 5. Start MariaDB and Redis Containers
-
-Run Docker Compose to spin up local database and cache services:
-
+## 8. Database Setup
+Start MariaDB and Redis using Docker:
 ```bash
 docker compose up -d
 ```
 
-Verify that services are running and healthy:
-
+Run database migrations and import the full Shopify Taxonomy:
 ```bash
-docker compose ps
-```
-
----
-
-### 6. Run Database Migrations
-
-Apply Django core and third-party migrations (including `django_celery_results`):
-
-```bash
+cd backend
 python manage.py migrate
-```
-
----
-
-### 7. Create Superuser (Admin Access)
-
-```bash
-python manage.py createsuperuser
-```
-
----
-
-### 8. Import Shopify Taxonomy & Catalog Data
-
-```bash
-# 1. Download and ingest official Shopify category trees & attributes (5,000+ nodes)
 python manage.py import_taxonomy
-
-# 2. Ingest sample product catalog spreadsheet (.xlsx or .csv)
-python manage.py import_products "data/Product List.xlsx"
-
-# 3. (Optional) Run classification batch job via CLI
-python manage.py run_classification_job --batch-size=100
 ```
 
 ---
 
-### 9. Start Background Celery Worker
-
-In a separate terminal window (with the virtual environment activated):
-
+## 9. Running the Backend
 ```bash
-# On Linux / macOS:
-celery -A taxonomy_classifier worker -l info
-
-# On Windows:
-celery -A taxonomy_classifier worker -l info --pool=solo
+cd backend
+python manage.py runserver 127.0.0.1:8000
 ```
+Backend API will be accessible at: `http://127.0.0.1:8000/api/`
 
 ---
 
-### 10. Start the Development Web Server
-
-```bash
-python manage.py runserver 0.0.0.0:8000
-```
-
----
-
-### 11. Start the React + Vite Review Frontend
-
-In a separate terminal window:
-
+## 10. Running the Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-Open your browser at **`http://localhost:5173/`** to access the **Shopify Product Taxonomy Classifier & Curator Review Dashboard**.
+Frontend UI will be accessible at: `http://localhost:5173/`
 
 ---
 
-### 12. Run Automated Test Suites
-
+## 11. Running Celery & Redis
+Start Celery worker for asynchronous batch processing:
 ```bash
-# Run Django test suite (30 unit & integration test cases)
+cd backend
+celery -A config worker --loglevel=info -P solo
+```
+
+---
+
+## 12. Excel / CSV Upload Format
+Supported formats: `.xlsx`, `.xls`, `.xlsm`, `.csv`. The parser detects standard headers:
+- `Product Number` or `SKU`: Mandatory unique identifier.
+- `Product Name` or `Title`: Product name.
+- `Brand`, `Vendor`, or `Manufacturer`: Brand name.
+- `Product Description` / `Bullets`: Detailed marketing copy.
+- `Product Category` / `Product Sub Category`: Source category breadcrumb.
+- `Product Color` / `Materials`: Physical specifications.
+- `Image 1` ... `Image 20`: Aggregated into primary and secondary images.
+
+---
+
+## 13. Multi-Modal Classification Pipeline
+- **Dense Text Embeddings (60% weight):** Sentence-Transformers encodes product title, brand, description, and source categories into dense 384-d vectors matched against pre-indexed Shopify taxonomy vectors.
+- **Zero-Shot Visual Similarity (40% weight):** OpenCLIP ViT-B-32 evaluates visual similarity against natural category prompts for the top text candidates.
+- **Late Fusion:** Weighted linear combination generates final candidate scores.
+- **Attribute Extraction:** RapidFuzz token matching & word-boundary regex match allowed category attributes and values.
+
+---
+
+## 14. Confidence Scoring & Review Triggers
+Predictions are automatically routed to the Curator Review Queue if:
+1. **Low Confidence:** Score is below threshold (`< 0.55`).
+2. **Sibling Ambiguity:** Difference between Rank 1 and Rank 2 score is `< 0.01` (with top score `< 0.65`).
+3. **Low Information:** Missing marketing description or sparse product record.
+4. **Image Failure:** Image download fails or URL is inaccessible.
+
+---
+
+## 15. Batch Processing & Scalability
+- **Chunking:** Ingests and processes products in chunks of 100 items.
+- **Atomic Checkpoints:** Commits progress every 5 items for live UI progress updates.
+- **Fault Isolation:** A failed item does not abort the batch job.
+- **Pre-Computed Embeddings:** Category vector dot product runs in **12–18 ms** per product.
+
+---
+
+## 16. Failure Recovery & Resumability
+If a 10,000-item batch job is interrupted at item 6,000, resuming the job queries completed products and processes only the remaining 4,000 items without redundant computation:
+```bash
+python manage.py run_classification_job --resume=1
+```
+
+---
+
+## 17. REST API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health/` | Service health check & DB latency |
+| `GET` | `/api/products/` | Paginated product list with search filters |
+| `POST` | `/api/imports/` | Upload and parse catalog spreadsheet (.xlsx, .csv) |
+| `GET` | `/api/taxonomy/categories/` | Search Shopify taxonomy tree (14,606 nodes) |
+| `GET` | `/api/taxonomy/attributes/` | List allowed attributes for category |
+| `GET` | `/api/results/` | Paginated classification results |
+| `GET` | `/api/results/summary/` | Aggregate KPI statistics |
+| `PATCH` | `/api/results/{id}/` | Approve or override category |
+| `POST` | `/api/jobs/` | Queue batch classification job |
+| `GET` | `/api/jobs/{id}/` | Poll batch job progress |
+
+---
+
+## 18. Testing & Quality Assurance
+Run backend test suites:
+```bash
+cd backend
 python manage.py test
 ```
 
----
-
-## 🔍 Health Check & Verification
-
-Once the development server is running, you can test the system health endpoint:
-
+Build frontend production bundle:
 ```bash
-curl http://127.0.0.1:8000/api/health/
-```
-
-Expected JSON Response (`HTTP 200 OK`):
-
-```json
-{
-  "status": "healthy",
-  "service": "taxonomy_classifier",
-  "version": "1.0.0",
-  "environment": "development",
-  "checks": {
-    "database": {
-      "status": "connected",
-      "engine": "django.db.backends.mysql",
-      "host": "127.0.0.1",
-      "name": "taxonomy_classifier",
-      "error": null
-    }
-  },
-  "response_time_ms": 12.4
-}
+cd frontend
+npm run build
 ```
 
 ---
 
-## 📂 Project Directory Layout
-
-```
-.
-├── .env.example                   # Example environment configuration
-├── .gitignore                      # Git ignore patterns
-├── docker-compose.yml              # Local MariaDB + Redis stack
-├── requirements.txt                # Pinned dependencies
-├── manage.py                       # Django CLI entrypoint
-├── README.md                       # Local runbook & documentation
-├── frontend/                       # React + Vite curator review dashboard
-│   ├── src/
-│   │   ├── components/
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
-│   ├── package.json
-│   └── vite.config.js
-├── catalog/                        # Product catalog & import app
-│   ├── apps.py
-│   ├── models.py
-│   ├── urls.py
-│   └── views.py
-├── taxonomy/                       # Shopify category/attribute taxonomy app
-│   ├── apps.py
-│   ├── models.py
-│   ├── urls.py
-│   └── views.py
-├── classification/                 # Classification jobs & engine app
-│   ├── apps.py
-│   ├── models.py
-│   ├── tasks.py                    # Async Celery tasks
-│   ├── urls.py
-│   └── views.py
-└── taxonomy_classifier/            # Project configuration
-    ├── asgi.py
-    ├── celery.py                   # Celery application instance
-    ├── urls.py                     # Root routing
-    ├── views.py                    # Health check endpoint
-    ├── wsgi.py
-    └── settings/
-        ├── __init__.py
-        ├── base.py                 # Common configuration
-        ├── dev.py                  # Dev settings (MariaDB + Redis from .env)
-        └── prod.py                 # Production settings
-```
+## 19. Documentation Index
+- [**QUESTIONS.md**](QUESTIONS.md) — Master technical design questions and comprehensive answers.
+- [**docs/technical-design.md**](docs/technical-design.md) — Complete technical design and architecture guide.
+- [**docs/architecture.md**](docs/architecture.md) — Domain boundaries and system architecture.
+- [**docs/api.md**](docs/api.md) — Complete REST API reference and request/response schemas.
+- [**docs/classification-approach.md**](docs/classification-approach.md) — ML embedding and multimodal fusion details.
+- [**docs/development-estimation.md**](docs/development-estimation.md) — Work breakdown structure and production effort estimates.
